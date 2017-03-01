@@ -10,7 +10,7 @@ $(document).ready(function() {
 	var year = (/--(\d+)/.exec($("pre").html())[1]);
 	studyplan = studyplanMap[major + " " + year];
 	if(!studyplan) {
-		return addHTML('Sorry, unavailable for your major and year :( Contact dheyman@stevens.edu for a request.');
+		return render('Sorry, unavailable for your major and year :( Contact dheyman@stevens.edu for a request.');
 	}
 	
 	$.ajax({
@@ -62,14 +62,15 @@ var parse = function() {
 	printFilled();
 };
 
+Array.prototype.prepend = function(x) {
+	var temp = this.slice(0);
+	temp.unshift(x);
+	return temp;
+};
+
 var fill = function(period, classes) {
 	classes.forEach(function(c) {
-		if(c[3] == 'F' || c[3] == 'W') {
-			var temp = c.slice(0);
-			temp.unshift(period);
-			unassigned.push(temp);
-			return;
-		}
+		if(c[3] == 'F' || c[3] == 'W') return unassigned.push(c.prepend(period));
 		// class = c, try to match against all studyplan
 		var assigned = false;
 		studyplan.forEach(function(studygroup) { Object.keys(studygroup).forEach(function(key) {
@@ -86,8 +87,7 @@ var fill = function(period, classes) {
 			
 			var fillMe = function(toFill) {
 				if(!toFill || assigned) return;
-				var temp = c.slice(0);
-			  	temp.unshift(period);
+				var temp = c.prepend(period);
 				if(isList && filled[key]) filled[key].push(temp);
 				else if(isList) filled[key] = [temp];
 				else filled[key] = temp;
@@ -120,15 +120,11 @@ var fill = function(period, classes) {
 				});
 			}
 		}); });
-		if(!assigned) {
-			var temp = c.slice(0);
-			temp.unshift(period);
-			unassigned.push(temp);
-		}
+		if(!assigned) unassigned.push(c.prepend(period));
 	});
 };
 
-var addHTML = function(res) {
+var render = function(res) {
 	$("body").append("<button id='showStudyPlan' style='position: fixed; background: #599e76; border: 0; color: #fff; line-height: 30px; padding: 0 10px; cursor: pointer; right: 30px; top: 30px; box-shadow: 0 0 10px #8a8a8a;'>SHOW STUDY PLAN</button>");
 	$("body").append("<div id='studyPlan' style='position: fixed; top: 0; left: 0; height: 100%; width: 100%; background: rgba(0, 0, 0, .5); display: none;'><div style='box-sizing:border-box; padding: 20px; position: fixed; width: 90%; height: 90%; top: 5%; left: 5%; background: #fff; overflow: scroll;'>" + res + "</div></div>");
 	$("#showStudyPlan").click(function() {
@@ -146,7 +142,7 @@ var addHTML = function(res) {
 
 var printFilled = function() {
 	var res = "";
-	var addRes = function(r) {res += r + '<br>';};
+	var addLine = function(r) {res += r + '<br>';};
 	var courseString = function(c) {
 		if(!c) return '<font color="red">TODO</font>';
 		var val = c[1] + ' ' + c[2] + c[3] + ' (sem: ' + c[0] + ', grade: ';
@@ -157,32 +153,32 @@ var printFilled = function() {
 	
 	studyplan.forEach(function(studygroup) { Object.keys(studygroup).forEach(function(key) {
 		if(Array.isArray(studygroup[key])) {
-			addRes('<b>' + key + '</b>: ');
+			addLine('<b>' + key + '</b>: ');
 			var count = 0;
 			filled[key].forEach(function(c) {
-				addRes(courseString(c));
+				addLine(courseString(c));
 				count++;
 			});
-			while(count++ < studygroup[key][1]) addRes(courseString(null));
+			while(count++ < studygroup[key][1]) addLine(courseString(null));
 		}
-		else addRes('<b>' + key + '</b>: ' + courseString(filled[key]));
-	}); addRes("<br><br><hr>"); });
+		else addLine('<b>' + key + '</b>: ' + courseString(filled[key]));
+	}); addLine("<br><br><hr>"); });
 	
 	
-	addRes('<b>General Elective Credits:</b>');
+	addLine('<b>General Elective Credits:</b>');
 	unassigned.forEach(function(c) {
 		if(c[4] == 'F' || c[4] == 'P' || c[4] == 'W') return;
-		addRes(courseString(c));
+		addLine(courseString(c));
 	});
 	
-	addRes("<br><br><hr>");
-	addRes('<b>Other Pass/Fail/Withdraw:</b>');
+	addLine("<br><br><hr>");
+	addLine('<b>Other Pass/Fail/Withdraw:</b>');
 	unassigned.forEach(function(c) {
 		if(c[4] != 'F' && c[4] != 'P' && c[4] != 'W') return;
-		addRes(courseString(c));
+		addLine(courseString(c));
 	});
 	
 	res += '';
 	
-	addHTML(res);
+	render(res);
 };
