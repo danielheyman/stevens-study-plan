@@ -1,0 +1,18 @@
+{
+	"name": "Stevens Study Plan",
+	"version": "1.0",
+	"permissions": ["webRequest", "webRequestBlocking", "http://*/*", "<all_urls>"],
+	"manifest_version": 2,
+	"content_scripts": [
+		{
+			"matches": [
+				"https://es.stevens.edu/ia-bin/tsrvweb.exe*"
+			],
+			"js": [
+				"jquery.latest.js",
+				"index.js"
+			],
+			"run_at": "document_start"
+		}
+	]
+}
