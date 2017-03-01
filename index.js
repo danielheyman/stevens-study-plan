@@ -1,88 +1,36 @@
-var studyplan = {
-	"science I": {classes: ["PEP 111", "CH 115", "PEP 111"]},
-	"science II": {classes: ["PEP 112", "CH 116", "CH 281"]},
-	"science Lab": {classes: ["PEP 221", "CH 117", "CH 282"]},
-	"MA 121": null,
-	"MA 122": null,
-	"MA 123": null,
-	"MA 124": null,
-	"MA 222": null,
-	"MA 331": null,
-	"BT 353": null,
-	"PE 200 I": {groups: ["PE"]},
-	"PE 200 II": {groups: ["PE"]},
-	"PE 200 III": {groups: ["PE"]},
-	"PE 200 IV": {groups: ["PE"]},
-	"CS 115 / CS 181": {classes: ["CS 115", "CS 181"]},
-	"CS 146": null,
-	"CS 135": null,
-	"CS 284 / CS 182": {classes: ["CS 284", "CS 182"]},
-	"CS 334": null,
-	"CS 383": null,
-	"CS 385": null,
-	"CS 347": null,
-	"CS 392": null,
-	"CS 496": null,
-	"CS 442": null,
-	"CS 443": null,
-	"CS 511": null,
-	"CS 492": null,
-	"CS 522 / CS 546 / CS 548": {classes: ["CS 522", "CS 546", "CS 548"]},
-	"CS 306": null,
-	"CS 423": null,
-	"CS 485": null,
-	"CS 424": null,
-	"Software Dev Electives": {
-		classes: ["CS 516", "CS 521", "CS 522", "CS 526", "CS 537", "CS 541", "CS 546", "CS 548", "CS 549", "CS 558"]
-	},
-	"Tech Electives": [{ 
-		groupsOpt: [
-			{groups: ["CS"], levelMin: 300, except: [
-				"CS 501", "CS 570", "CS 510", "CS 514", "CS 520", "CS 550", "CS 561", "CS 590"
-			]},
-			{groups: ["SSW"], levelMin: 500, except: ["SSW 540"]}
-		],
-		classes: ["CpE 358"]
-	}, 2],
-	"Science/Math Electives": [{
-		groupsOpt: [
-			{groups: ["MA"], except: ["MA 117", "MA 118", "MA 119", "MA 134", "MA 502"]}
-		],
-		groups: ["PEP", "CH"]
-	}, 2],
-	"CAL 103": null,
-	"CAL 105": null,
-	"HUM 100/200": {
-		groupsOpt: [
-			{groups: ["HUM", "HHS", "HSS", "HLI", "HST", "COMM", "HTH", "HPL"], levelMin: 100, levelMax: 299},
-		],
-		classes: [
-			"HAR 180", "HAR 181", "HAR 280", "HAR 281", "HMU 101", "HMU 102", "HMU 192", "HMU 193", "HMU 195"
-		]
-	},
-	"HUM 300": {
-		groupsOpt: [
-			{groups: ["HUM", "HHS", "HSS", "HLI", "HST", "COMM", "HTH", "HPL"], levelMin: 300, levelMax: 399},
-		],
-		classes: [
-			"BT 243", "BT 244", "HAR 380", "HAR 389", "HMU 350"
-		]
-	},
-	"HSS 371 / HPL 455": { classes: ["HSS 371", "HPL 455"] },
-	"HUM": [{
-		groups: ["HUM", "HHS", "HSS", "HLI", "HST", "COMM", "HTH", "HPL"],
-		classes: [
-			"HAR 180", "HAR 181", "HAR 280", "HAR 281", "HAR 380", "HAR 389", "HAR 485", "HMU 101", "HMU 102", "HMU 192", "HMU 193", "HMU 195", "HMU 350", "BT 243", "BT 244"
-		]
-	}, 3],
+var studyplanMap = {
+	'Computer Science 2014': 'cs-2014'
 };
 
-var filled = {};
-
-$(document).ready(function()
-{
-	if($("body").html().indexOf('Unofficial Transcript') === -1) return;
+$(document).ready(function() {
+	if($("body").html().indexOf('Current Academic Program') === -1) return;
 	
+	
+	var major = (/Admitted[\s\S]*?Major:\s+([ \S]+)/g.exec($("pre").html()))[1];
+	var year = (/--(\d+)/.exec($("pre").html())[1]);
+	studyplan = studyplanMap[major + " " + year];
+	if(!studyplan) {
+		return addHTML('Sorry, unavailable for your major and year :( Contact dheyman@stevens.edu for a request.');
+	}
+	
+	$.ajax({
+	  	url: chrome.extension.getURL('/studyplans/' + studyplan + '.json'),
+	  	dataType: 'json',
+	  	success: function(res) {
+			studyplan = res;
+			parse();
+		},
+		error: function(err) {
+			console.log('Error: invalid json');
+		}
+	});
+});
+
+var studyplan = null;
+var filled = {};
+var unassigned = [];
+
+var parse = function() {
 	// Parse
 	var matches = /;-+(\d+) ([\d \w]+)-+([\s\S]*?)AHRS/g;
 	var body = $("pre").html();
@@ -112,9 +60,7 @@ $(document).ready(function()
 	}	
 	
 	printFilled();
-});
-
-var unassigned = [];
+};
 
 var fill = function(period, classes) {
 	classes.forEach(function(c) {
@@ -126,14 +72,14 @@ var fill = function(period, classes) {
 		}
 		// class = c, try to match against all studyplan
 		var assigned = false;
-		Object.keys(studyplan).forEach(function(key) {
+		studyplan.forEach(function(studygroup) { Object.keys(studygroup).forEach(function(key) {
 			var plan;
-			var isList = Array.isArray(studyplan[key]);
+			var isList = Array.isArray(studygroup[key]);
 			if(isList) {
-				plan = studyplan[key][0];
-				if(filled.hasOwnProperty(key) && filled[key].length >= studyplan[key][1]) return;
+				plan = studygroup[key][0];
+				if(filled.hasOwnProperty(key) && filled[key].length >= studygroup[key][1]) return;
 			} else {
-				plan = studyplan[key];
+				plan = studygroup[key];
 				if(filled.hasOwnProperty(key)) return;
 			}
 			if(assigned) return;
@@ -168,11 +114,12 @@ var fill = function(period, classes) {
 						opt.groups.indexOf(c[0]) > -1 && 
 						c[1] >= opt.levelMin && 
 						c[1] <= opt.levelMax && 
+						(c[4] > '1.00' || opt.credits == c[4]) &&
 						opt.except.indexOf(c.slice(0, 2).join(' ')) === -1
 					);
 				});
 			}
-		});
+		}); });
 		if(!assigned) {
 			var temp = c.slice(0);
 			temp.unshift(period);
@@ -181,34 +128,47 @@ var fill = function(period, classes) {
 	});
 };
 
-var courseString = function(c) {
-	if(!c) return '<font color="red">TODO</font>';
-	return c[1] + ' ' + c[2] + c[3] + ' (sem: ' + c[0] + ', grade: ' + c[4] + ', credits: ' + c[5] + ')';
+var addHTML = function(res) {
+	$("body").append("<button id='showStudyPlan' style='position: fixed; background: #599e76; border: 0; color: #fff; line-height: 30px; padding: 0 10px; cursor: pointer; right: 30px; top: 30px; box-shadow: 0 0 10px #8a8a8a;'>SHOW STUDY PLAN</button>");
+	$("body").append("<div id='studyPlan' style='position: fixed; top: 0; left: 0; height: 100%; width: 100%; background: rgba(0, 0, 0, .5); display: none;'><div style='box-sizing:border-box; padding: 20px; position: fixed; width: 90%; height: 90%; top: 5%; left: 5%; background: #fff; overflow: scroll;'>" + res + "</div></div>");
+	$("#showStudyPlan").click(function() {
+		$("#studyPlan").show();
+		$("body").css("overflow", "hidden");
+	});
+	$("#studyPlan").click(function(e) {
+		if($(e.target).attr("id") != "studyPlan") return;
+		$("#studyPlan").hide();
+		$("body").css("overflow", "auto");
+	});
 };
 
 
 
 var printFilled = function() {
-	var res = "<br><br>";
+	var res = "";
 	var addRes = function(r) {res += r + '<br>';};
+	var courseString = function(c) {
+		if(!c) return '<font color="red">TODO</font>';
+		var val = c[1] + ' ' + c[2] + c[3] + ' (sem: ' + c[0] + ', grade: ';
+		val += (c[4] == 'IP') ? '<font color="green">IP</font>' : c[4];
+		val += ', credits: ' + c[5] + ')';
+		return val;
+	};
 	
-	var last = null;
-	Object.keys(studyplan).forEach(function(key) {
-		if(last && last != key.slice(0, 2)) addRes("<br><br><hr>");
-		last = key.slice(0, 2);
-		if(Array.isArray(studyplan[key])) {
+	studyplan.forEach(function(studygroup) { Object.keys(studygroup).forEach(function(key) {
+		if(Array.isArray(studygroup[key])) {
 			addRes('<b>' + key + '</b>: ');
 			var count = 0;
 			filled[key].forEach(function(c) {
 				addRes(courseString(c));
 				count++;
 			});
-			while(count++ < studyplan[key][1]) addRes(courseString(null));
+			while(count++ < studygroup[key][1]) addRes(courseString(null));
 		}
 		else addRes('<b>' + key + '</b>: ' + courseString(filled[key]));
-	});
+	}); addRes("<br><br><hr>"); });
 	
-	addRes("<br><br><hr>");
+	
 	addRes('<b>General Elective Credits:</b>');
 	unassigned.forEach(function(c) {
 		if(c[4] == 'F' || c[4] == 'P' || c[4] == 'W') return;
@@ -222,7 +182,7 @@ var printFilled = function() {
 		addRes(courseString(c));
 	});
 	
-	res += '<br>';
+	res += '';
 	
-	$("body").append(res);
+	addHTML(res);
 };
