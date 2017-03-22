@@ -151,7 +151,7 @@ var printFilled = function() {
 		return val;
 	};
 	
-	studyplan.forEach(function(studygroup) { Object.keys(studygroup).forEach(function(key) {
+	studyplan.slice(0, studyplan.length - 1).forEach(function(studygroup) { Object.keys(studygroup).forEach(function(key) {
 		if(Array.isArray(studygroup[key])) {
 			addLine('<b>' + key + '</b>: ');
 			var count = 0;
@@ -166,10 +166,15 @@ var printFilled = function() {
 	
 	
 	addLine('<b>General Elective Credits:</b>');
+	count = 0;
 	unassigned.forEach(function(c) {
 		if(c[4] == 'F' || c[4] == 'P' || c[4] == 'W') return;
 		addLine(courseString(c));
+		count++;
 	});
+	if(studyplan[studyplan.length - 1].general) {
+		while(count++ < studyplan[studyplan.length - 1].general) addLine(courseString(null));
+	}
 	
 	addLine("<br><br><hr>");
 	addLine('<b>Other Pass/Fail/Withdraw:</b>');
